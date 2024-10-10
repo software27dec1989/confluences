@@ -1,0 +1,31 @@
+import requests
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.abcs/confluence"
+parent_page_id = "123456"  # Replace with the actual parent page ID for "Block Fulfilment"
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint to get child pages of the parent page
+api_url = f"{confluence_url}/rest/api/content/{parent_page_id}/child/page"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Send a request to get the child pages
+response = requests.get(api_url, headers=headers)
+
+# Check if the request was successful
+if response.status_code == 200:
+    child_pages = response.json().get("results", [])
+    
+    # Print the titles of the child pages
+    print("Child Pages under 'Block Fulfilment':")
+    for page in child_pages:
+        title = page.get("title")
+        page_id = page.get("id")
+        print(f" - {title} (ID: {page_id})")
+else:
+    print(f"Failed to retrieve child pages. Status code: {response.status_code}")
