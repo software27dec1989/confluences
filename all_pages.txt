@@ -1,0 +1,56 @@
+import requests
+from operator import itemgetter
+from datetime import datetime
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.abcs/confluence"
+parent_page_id = "065625"  # Parent page ID for "Block Fulfilment"
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint for child pages
+api_url = f"{confluence_url}/rest/api/content/{parent_page_id}/child/page"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Function to get all child pages with pagination
+def get_all_child_pages(api_url):
+    child_pages = []
+    while api_url:
+        # Send a request to get the child pages
+        response = requests.get(api_url, headers=headers)
+        if response.status_code == 200:
+            response_data = response.json()
+            child_pages.extend(response_data.get("results", []))
+            
+            # Check if there is a next page
+            next_page_url = response_data.get("_links", {}).get("next")
+            if next_page_url:
+                api_url = confluence_url + next_page_url  # Build the full URL for the next page
+            else:
+                api_url = None  # No more pages
+        else:
+            print(f"Failed to retrieve child pages. Status code: {response.status_code}")
+            break
+    return child_pages
+
+# Fetch all child pages
+child_pages = get_all_child_pages(api_url)
+
+# Sort child pages by 'created' field in descending order
+child_pages_sorted = sorted(child_pages, key=lambda x: x.get("history", {}).get("createdDate"), reverse=True)
+
+# Print the titles and creation dates of the sorted child pages
+print("Child Pages under 'Block Fulfilment' (sorted by creation date):")
+for page in child_pages_sorted:
+    title = page.get("title")
+    page_id = page.get("id")
+    created_date = page.get("history", {}).get("createdDate", "Unknown date")
+    
+    # Format the created date if available
+    created_date_formatted = datetime.strptime(created_date, '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M:%S') if created_date != "Unknown date" else "Unknown date"
+    
+    print(f" - {title} (ID: {page_id}) | Created on: {created_date_formatted}")
