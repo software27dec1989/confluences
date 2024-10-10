@@ -1,0 +1,64 @@
+import requests
+import time
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.asdc/confluence"
+parent_page_id = "065625"  # Parent page ID for "Block Fulfilment"
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint for child pages
+api_url = f"{confluence_url}/rest/api/content/{parent_page_id}/child/page"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Function to get all child pages with pagination and rate limiting
+def get_all_child_pages(api_url):
+    child_pages = []
+    retry_attempts = 5  # Number of times to retry in case of 429 error
+    while api_url:
+        for attempt in range(retry_attempts):
+            response = requests.get(api_url, headers=headers)
+            
+            if response.status_code == 200:
+                # Successful request, process response
+                response_data = response.json()
+                child_pages.extend(response_data.get("results", []))
+                
+                # Check if there is a next page
+                next_page_url = response_data.get("_links", {}).get("next")
+                if next_page_url:
+                    api_url = confluence_url + next_page_url  # Build the full URL for the next page
+                else:
+                    api_url = None  # No more pages
+                break  # Exit retry loop since request was successful
+            
+            elif response.status_code == 429:
+                # Rate limited, handle retry after delay
+                retry_after = int(response.headers.get("Retry-After", 10))  # Default to 10 seconds if not provided
+                print(f"Rate limited. Retrying after {retry_after} seconds...")
+                time.sleep(retry_after)  # Wait before retrying
+            else:
+                print(f"Failed to retrieve child pages. Status code: {response.status_code}")
+                break
+    return child_pages
+
+# Function to generate and print full URLs
+def generate_full_links(child_pages):
+    for page in child_pages:
+        title = page.get("title")
+        webui = page.get("_links", {}).get("webui")
+        
+        if webui:
+            full_link = confluence_url + webui
+            print(f"Page Title: {title}")
+            print(f"Link: {full_link}\n")
+
+# Fetch all child pages
+child_pages = get_all_child_pages(api_url)
+
+# Generate and print the full URLs for each page
+generate_full_links(child_pages)
