@@ -51,8 +51,8 @@ def get_all_child_pages(api_url):
 # Fetch all child pages
 child_pages = get_all_child_pages(api_url)
 
-# Sort child pages by 'created' field in descending order
-child_pages_sorted = sorted(child_pages, key=lambda x: x.get("history", {}).get("createdDate"), reverse=True)
+# Sort child pages by 'created' field in descending order, handling None values
+child_pages_sorted = sorted(child_pages, key=lambda x: x.get("history", {}).get("createdDate", ""), reverse=True)
 
 # Print the titles and creation dates of the sorted child pages
 print("Child Pages under 'Block Fulfilment' (sorted by creation date):")
@@ -62,6 +62,13 @@ for page in child_pages_sorted:
     created_date = page.get("history", {}).get("createdDate", "Unknown date")
     
     # Format the created date if available
-    created_date_formatted = datetime.strptime(created_date, '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M:%S') if created_date != "Unknown date" else "Unknown date"
+    if created_date != "Unknown date":
+        try:
+            created_date_formatted = datetime.strptime(created_date, '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            # Handle cases where the format might be slightly different
+            created_date_formatted = datetime.strptime(created_date, '%Y-%m-%dT%H:%M:%S.%f%z').strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        created_date_formatted = "Unknown date"
     
     print(f" - {title} (ID: {page_id}) | Created on: {created_date_formatted}")
