@@ -1,0 +1,35 @@
+import requests
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.abcs/confluence"
+page_id = "123456"  # Replace with the actual page ID you obtained earlier
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint to get page content by ID
+api_url = f"{confluence_url}/rest/api/content/{page_id}"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Send a request to get the Confluence page content
+response = requests.get(api_url, headers=headers)
+
+# Check if the request was successful
+if response.status_code == 200:
+    page_data = response.json()
+    
+    # Print the entire response to inspect its structure
+    print("Response Data:", page_data)
+
+    # Extract the title and content
+    page_title = page_data.get("title", "No title")
+    page_content = page_data.get("body", {}).get("storage", {}).get("value", "No content")
+
+    # Print the title and first 500 characters of the content
+    print(f"Page Title: {page_title}")
+    print(f"Page Content (HTML): {page_content[:500]}")  # Print first 500 characters of content
+else:
+    print(f"Failed to retrieve page content. Status code: {response.status_code}")
