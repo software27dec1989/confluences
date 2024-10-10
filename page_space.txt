@@ -1,0 +1,34 @@
+import requests
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.abcs/confluence"
+page_title = "Global Storage Operations"  # The title of the page you want to search for
+space_key = "StorageDeliverySMARTWorkflow"  # Replace with the actual space key
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint to search for the page by title
+api_url = f"{confluence_url}/rest/api/content?title={page_title}&spaceKey={space_key}"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Send a request to search for the page by title
+response = requests.get(api_url, headers=headers)
+
+# Check if the request was successful
+if response.status_code == 200:
+    page_data = response.json()
+    
+    # Extract page ID and title from the search result
+    if "results" in page_data and len(page_data["results"]) > 0:
+        page_id = page_data["results"][0]["id"]
+        page_title = page_data["results"][0]["title"]
+        print(f"Page ID: {page_id}")
+        print(f"Page Title: {page_title}")
+    else:
+        print("Page not found.")
+else:
+    print(f"Failed to search page. Status code: {response.status_code}")
