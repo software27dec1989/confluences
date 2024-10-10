@@ -1,0 +1,115 @@
+import requests
+import time
+import re  # Importing regex for Change Number extraction
+
+# Configuration
+confluence_url = "https://abc-confluence.systems.uk.asdc/confluence"
+parent_page_id = "065625"  # Parent page ID for "Block Fulfilment"
+bearer_token = "your_bearer_token"  # Replace with your actual Bearer token
+
+# API endpoint for child pages
+api_url = f"{confluence_url}/rest/api/content/{parent_page_id}/child/page"
+
+# Headers for authentication
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Content-Type": "application/json"
+}
+
+# Function to get all child pages with pagination
+def get_all_child_pages(api_url):
+    child_pages = []
+    retry_attempts = 5  # Number of times to retry in case of 429 error
+    while api_url:
+        for attempt in range(retry_attempts):
+            response = requests.get(api_url, headers=headers)
+            
+            if response.status_code == 200:
+                # Successful request, process response
+                response_data = response.json()
+                child_pages.extend(response_data.get("results", []))
+                
+                # Check if there is a next page
+                next_page_url = response_data.get("_links", {}).get("next")
+                if next_page_url:
+                    api_url = confluence_url + next_page_url  # Build the full URL for the next page
+                else:
+                    api_url = None  # No more pages
+                break  # Exit retry loop since request was successful
+            
+            elif response.status_code == 429:
+                # Rate limited, handle retry after delay
+                retry_after = int(response.headers.get("Retry-After", 10))  # Default to 10 seconds if not provided
+                print(f"Rate limited. Retrying after {retry_after} seconds...")
+                time.sleep(retry_after)  # Wait before retrying
+            else:
+                print(f"Failed to retrieve child pages. Status code: {response.status_code}")
+                break
+    return child_pages
+
+# Function to extract change number from the title
+def extract_change_number(title):
+    match = re.search(r'(CHG|CR)\d+', title)  # Regex to find patterns like 'CHG' or 'CR' followed by digits
+    if match:
+        return match.group(0)
+    return None
+
+# Function to filter and display the pages based on user input and capture the matching link
+def search_page_by_change_number(child_pages, change_number):
+    for page in child_pages:
+        title = page.get("title")
+        webui = page.get("_links", {}).get("webui")
+        
+        if webui:
+            full_link = confluence_url + webui
+            extracted_change_number = extract_change_number(title)
+            
+            if extracted_change_number == change_number:
+                print(f"\nPage Title: {title}")
+                print(f"Link: {full_link}")
+                print(f"Change Number: {extracted_change_number}\n")
+                
+                return full_link  # Return the matching page link
+    
+    print(f"No page found for Change Number: {change_number}\n")
+    return None
+
+# Function to send data to another API using the captured link
+def send_data_to_another_api(change_number, confluence_link):
+    # Define the body of the request where you want to pass the confluence link
+    body = {
+        "changeNumber": change_number,
+        "confluencePageLink": confluence_link,
+        # Add other fields as needed
+        "otherField1": "value1",
+        "otherField2": "value2"
+    }
+    
+    # The URL of the API where you want to send the data
+    api_url = "https://api.your-system.com/update"
+    
+    # POST request to send the data
+    response = requests.post(api_url, json=body, headers=headers)
+    
+    if response.status_code == 200:
+        print(f"Data successfully sent to API. Status code: {response.status_code}")
+    else:
+        print(f"Failed to send data. Status code: {response.status_code}, Response: {response.text}")
+
+# Fetch all child pages
+child_pages = get_all_child_pages(api_url)
+
+# Continuously prompt user for Change Number input until 'exit' is entered
+while True:
+    user_change_number = input("Please enter the Change Number (e.g., CHG1234567 or CR1234567) or type 'exit' to quit: ")
+    
+    if user_change_number.lower() == "exit":
+        print("Exiting...")
+        break
+    
+    # Search for the page based on user input and capture the link
+    confluence_link = search_page_by_change_number(child_pages, user_change_number)
+    
+    if confluence_link:
+        # Send the data to another API with the captured link
+        send_data_to_another_api(user_change_number, confluence_link)
