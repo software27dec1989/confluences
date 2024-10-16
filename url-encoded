@@ -1,0 +1,69 @@
+import requests
+import re
+import base64  # For Basic Authentication token encoding
+
+# Configuration for the ICE API
+ice_api_url = "https://ice.it.local.abc/ice/api/v2/changes/"
+token = "your_token"  # Replace with your actual token
+
+# Encode the token to Base64 for Basic Authentication
+encoded_token = base64.b64encode(token.encode()).decode()
+
+# Headers for the ICE API
+ice_headers = {
+    "Authorization": f"Basic {encoded_token}",
+    "Content-Type": "application/x-www-form-urlencoded"  # Set correct content type
+}
+
+# Function to fetch and update the change record
+def update_change_record(change_number, confluence_link):
+    # Step 1: Prepare the request body in x-www-form-urlencoded format
+    request_body = {
+        "crNumber": change_number  # Mandatory field in the API request
+    }
+
+    # Encode the data as x-www-form-urlencoded
+    request_body_encoded = requests.models.RequestEncodingMixin._encode_params(request_body)
+
+    # Step 2: Fetch the existing change record by POSTing the change_number
+    try:
+        response = requests.post(ice_api_url, data=request_body_encoded, headers=ice_headers)
+        response.raise_for_status()  # Raise exception for HTTP errors
+
+        # Parse JSON response if content type is JSON
+        if response.headers['Content-Type'].startswith('application/json'):
+            change_data = response.json()
+        else:
+            print(f"Unexpected content type in response: {response.headers['Content-Type']}")
+            return
+
+        # Step 3: Modify the necessary fields in the response
+        if 'artifacts' in change_data and 'artifacts' in change_data['artifacts'] and len(change_data['artifacts']['artifacts']) > 0:
+            artifact = change_data['artifacts']['artifacts'][0]  # Assuming there's only one artifact
+            
+            # Update the fields with the new values
+            artifact['regressionTestType'] = "Manual"
+            artifact['codeReviewUrl'] = confluence_link
+            artifact['manualRegressionTestUrls'] = [confluence_link]
+
+        # Step 4: Send the updated data back in x-www-form-urlencoded format
+        update_body_encoded = requests.models.RequestEncodingMixin._encode_params(change_data)
+        update_response = requests.post(ice_api_url, data=update_body_encoded, headers=ice_headers)
+
+        # Check the update response
+        if update_response.status_code == 200:
+            print(f"Change record successfully updated. Status code: {update_response.status_code}")
+        else:
+            print(f"Failed to update the change record. Status code: {update_response.status_code}, Response: {update_response.text}")
+    
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        print(f"Response text: {response.text}")
+    except Exception as err:
+        print(f"An error occurred: {err}")
+
+# Example usage
+confluence_link = "https://example.com/confluence/link"  # Replace with actual Confluence link
+change_number = "CHG1234567"  # Replace with actual change number
+
+update_change_record(change_number, confluence_link)
