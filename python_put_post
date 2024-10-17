@@ -1,0 +1,43 @@
+import requests
+from pprint import pprint
+
+change_number = "CHG0123123"
+confluence_link = "abc.xyz.systems.ak.asbc"
+
+headers = {
+    'accept': 'application/json',
+    'Authorization': 'Basic NDUASDASDASDASDASFAFSVADfafdasdsadasd=',
+    'Content-Type': 'application/json'  # Since we're sending JSON data, use application/json
+}
+
+change_api_url = "https://ice.ut.glocal.asbc/ice/v2/changes"
+data = {
+    'crNumber': change_number,
+}
+
+# Fetch the current change data
+response = requests.post(change_api_url, data=data, headers=headers, verify=False)
+response_json = response.json()
+
+# Print the original response
+pprint(response_json)
+
+# Update the 'manualRegressionTestUrls' field with the new value
+updated_manual_regression_test_urls = ["https://new-test-url.com"]
+
+# Prepare the updated data
+update_data = {
+    "artifacts": response_json.get("artifacts", {}),
+    "regressionTestJustification": response_json.get("regressionTestJustification", ""),
+    "codeReviewUrl": response_json.get("codeReviewUrl", ""),
+    "manualRegressionTestUrls": updated_manual_regression_test_urls
+}
+
+# Assuming the API supports a PUT or PATCH request to update the change
+update_url = f"https://ice.ut.glocal.asbc/ice/v2/changes/{change_number}"
+
+# Send the update request
+update_response = requests.put(update_url, json=update_data, headers=headers, verify=False)
+
+# Print the response of the update
+pprint(update_response.json())
